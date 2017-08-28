@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.aceyin</groupId>
+    <artifactId>SmartAndy</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <kotlin.version>1.1.1</kotlin.version>
+        <kotlin.src.dir>src/main/kotlin</kotlin.src.dir>
+        <kotlin.test.dir>src/test/kotlin</kotlin.test.dir>
+
+        <maven.compiler.target.version>1.8</maven.compiler.target.version>
+        <maven.compiler.source.version>1.8</maven.compiler.source.version>
+        <maven.compiler.testTarget.version>1.8</maven.compiler.testTarget.version>
+        <maven.compiler.testSource.version>1.8</maven.compiler.testSource.version>
+
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib</artifactId>
+            <version>${kotlin.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.kitt</groupId>
+            <artifactId>snowboy</artifactId>
+            <version>1.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/snowboy-swig.jar</systemPath>
+        </dependency>
+    </dependencies>
+
+    <organization>
+        <name>aceyin.com</name>
+        <url>http://www.aceyin.com/</url>
+    </organization>
+
+    <developers>
+        <developer>
+            <name>aceyin</name>
+            <email>ync@163.com</email>
+            <organization>aceyin.com</organization>
+            <organizationUrl>http://www.aceyin.com/</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <url>http://github.com/aceyin/SmartAndy</url>
+        <connection>scm:git:http://github.com/aceyin/SmartAndy</connection>
+        <developerConnection>scm:git:http://github.com/aceyin/SmartAndy</developerConnection>
+        <tag>SmartAndy</tag>
+    </scm>
+
+    <build>
+        <!-- make maven-source-plugin work -->
+        <sourceDirectory>${kotlin.src.dir}</sourceDirectory>
+        <testSourceDirectory>${kotlin.test.dir}</testSourceDirectory>
+
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>1.5.0</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-maven-plugin</artifactId>
+                <version>${kotlin.version}</version>
+                <executions>
+                    <execution>
+                        <id>compile</id>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirs>
+                                <sourceDir>${project.basedir}/${kotlin.src.dir}</sourceDir>
+                                <!--<sourceDir>${project.basedir}/src/main/java</sourceDir>-->
+                            </sourceDirs>
+                            <jvmTarget>1.8</jvmTarget>
+                            <!--<jvmTarget>${maven.compiler.target.version}</jvmTarget>-->
+                            <!--<languageVersion>${maven.compiler.source.version}</languageVersion>-->
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>test-compile</id>
+                        <goals>
+                            <goal>test-compile</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirs>
+                                <sourceDir>${project.basedir}/${kotlin.test.dir}</sourceDir>
+                                <!--<sourceDir>${project.basedir}/src/test/java</sourceDir>-->
+                            </sourceDirs>
+                            <jvmTarget>1.8</jvmTarget>
+                            <!--<jvmTarget>${maven.compiler.target.version}</jvmTarget>-->
+                            <!--<languageVersion>${maven.compiler.source.version}</languageVersion>-->
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>buildnumber-maven-plugin</artifactId>
+                <version>1.4</version>
+                <executions>
+                    <execution>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>create</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <doCheck>false</doCheck>
+                    <doUpdate>false</doUpdate>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.5.1</version>
+                <configuration>
+                    <source>${maven.compiler.source.version}</source>
+                    <target>${maven.compiler.target.version}</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>2.5.3</version>
+                <configuration>
+                    <tagBase>http://github.com/aceyin/SmartAndy/tags</tagBase>
+                    <username>${scm.user}</username>
+                    <password>${scm.pwd}</password>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
