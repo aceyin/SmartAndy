@@ -1,15 +1,21 @@
 package aceyin.smandy.voice
 
 import aceyin.smandy.Conf
+import aceyin.smandy.log.TimerLogger
 import ai.kitt.snowboy.SnowboyDetect
+import be.tarsos.dsp.SilenceDetector
+import be.tarsos.dsp.io.TarsosDSPAudioFloatConverter
+import be.tarsos.dsp.io.TarsosDSPAudioFormat
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.logging.Logger
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.DataLine
 import javax.sound.sampled.TargetDataLine
+
 
 /**
  * the main voice detector processor
@@ -22,6 +28,12 @@ object VoiceDetector : Runnable {
     private val targetInfo: DataLine.Info
     private val detector: SnowboyDetect
     private val targetLine: TargetDataLine
+    // 连续100次静音检测之后，进入到待机状态
+    private val SILENCE_TIMES_BEFORE_STANDBY = 100
+    private val sienceCounter = AtomicInteger(0)
+    // 待机状态
+    private val standby = AtomicBoolean(true)
+
     @Volatile private var running = AtomicBoolean(false)
 
     init {
@@ -54,36 +66,114 @@ object VoiceDetector : Runnable {
             log.info("Starting Record Audio Input ... ")
             targetLine.open(audioFormat)
             targetLine.start()
-
-            // Reads 0.1 second of audio in each call.
-            val targetData = ByteArray(3200)
-            val snowboyData = ShortArray(1600)
-            var numBytesRead: Int
+            running.set(true)
 
             while (true) {
-                // Reads the audio data in the blocking mode. If you are on a very slow
-                // machine such that the hotword detector could not process the audio
-                // data in real time, this will cause problem...
-                numBytesRead = targetLine.read(targetData, 0, targetData.size)
-
-                if (numBytesRead == -1) {
-                    log.warning("Fails to read audio data.")
-                    break
-                }
-
-                // Converts bytes into int16 that Snowboy will read.
-                ByteBuffer.wrap(targetData).order(
-                        ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(snowboyData)
-
-                // Detection.
-                val result = detector.RunDetection(snowboyData, snowboyData.size)
-                if (result > 0) {
-                    print("Hello, Andy \n")
+                if (standby.get()) {
+                    listenOnWakeupWord()
+                } else {
+                    listenOnUserCommand()
                 }
             }
-            running.set(true)
         } catch(e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    /**
+     * Check if microphone is silence.
+     * @param data ByteArray - the data captured by microphone
+     * @return true, if is silence
+     */
+    fun isSilence(data: ByteArray): Boolean {
+        val tdspFormat = TarsosDSPAudioFormat(16000f, 16, 1, true, false)
+        val voiceFloatArr = FloatArray(data.size / tdspFormat.frameSize)
+        val audioFloatConverter = TarsosDSPAudioFloatConverter.getConverter(tdspFormat)
+        audioFloatConverter.toFloatArray(data.clone(), voiceFloatArr)
+        val silenceDetector = SilenceDetector(-35.0, false)
+        return silenceDetector.isSilence(voiceFloatArr)
+    }
+
+    /**
+     * 监听唤醒词。
+     * 当系统刚刚启动，或者已经进入到候机状态之后，将语音检测切换到监听唤醒词状态。
+     *
+     */
+    fun listenOnWakeupWord() {
+        TimerLogger.log("Listen on wakeup word", 10000)
+        val frameLen = 3200
+        // Reads 0.2 second of audio in each call.
+        val targetData = ByteArray(frameLen)
+        val snowboyData = ShortArray(frameLen / 2)
+        // Reads the audio data in the blocking mode. If you are on a very slow
+        // machine such that the hotword detector could not process the audio
+        // data in real time, this will cause problem...
+        val numBytesRead = targetLine.read(targetData, 0, targetData.size)
+
+        if (numBytesRead == -1) {
+            log.warning("Fails to read audio data. Check if the audio hardware is OK")
+            return
+        }
+
+        val isSilence = isSilence(targetData)
+        if (isSilence) {
+            val num = sienceCounter.incrementAndGet()
+            if (num > SILENCE_TIMES_BEFORE_STANDBY) {
+                standby.set(true)
+                sienceCounter.set(0)
+                if (!standby.get()) {
+                    log.info("Switching to STANDBY model")
+                }
+            }
+            return
+        }
+
+        log.info("Sound detected, starting to check wakeup words")
+        // Converts bytes into int16 that Snowboy will read.
+        ByteBuffer.wrap(targetData).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(snowboyData)
+
+        // Detection.
+        val result = detector.RunDetection(snowboyData, snowboyData.size)
+        if (result > 0) {
+            log.info("Wakeup words detected")
+            standby.set(false)
+            sienceCounter.set(0)
+        }
+    }
+
+    /**
+     * 监听用户指令。
+     * 当程序被唤醒词激活之后，将语音检测切换到监听用户指令状态.
+     * 处在检测用户命令状态的时候，侦听的语音时间会被设置为20秒钟
+     */
+    fun listenOnUserCommand() {
+        TimerLogger.log("Listen on user command", 3000)
+        // 侦听的语音长度为 每秒 16000帧*20秒
+        val frameLen = 16000 * 20
+        // Reads 0.2 second of audio in each call.
+        val targetData = ByteArray(frameLen)
+        // Reads the audio data in the blocking mode. If you are on a very slow
+        // machine such that the hotword detector could not process the audio
+        // data in real time, this will cause problem...
+        val numBytesRead = targetLine.read(targetData, 0, targetData.size)
+
+        if (numBytesRead == -1) {
+            log.warning("Fails to read audio data. Check if the audio hardware is OK")
+            return
+        }
+
+        val isSilence = isSilence(targetData)
+        if (isSilence) {
+            val num = sienceCounter.incrementAndGet()
+            if (num > SILENCE_TIMES_BEFORE_STANDBY) {
+                standby.set(true)
+                sienceCounter.set(0)
+                if (!standby.get()) {
+                    log.info("Switching to STANDBY model")
+                }
+            }
+            return
+        }
+        VoiceHandler.onOtherVoice(targetData)
     }
 }

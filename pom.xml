@@ -34,6 +34,13 @@
             <scope>system</scope>
             <systemPath>${project.basedir}/lib/snowboy-swig.jar</systemPath>
         </dependency>
+        <dependency>
+            <groupId>be.tarsos</groupId>
+            <artifactId>TarsosDSP</artifactId>
+            <version>2.3-bin</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/TarsosDSP-2.3-bin.jar</systemPath>
+        </dependency>
     </dependencies>
 
     <organization>
