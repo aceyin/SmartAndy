@@ -1,11 +1,12 @@
 package aceyin.smandy.voice
 
-import aceyin.smandy.client.AliASRClient
+import aceyin.smandy.client.socket.AliASRClient
 
 /**
  * handle the voice
  */
 object VoiceHandler {
+    private val asrClient = AliASRClient()
     /**
      * 处理唤醒词(预设的热词:alexa)
      */
@@ -17,6 +18,6 @@ object VoiceHandler {
      * 处理非热词语音
      */
     fun onOtherVoice(data: ByteArray) {
-        AliASRClient.startAsr(data)
+        asrClient.startAsr(data)
     }
 }

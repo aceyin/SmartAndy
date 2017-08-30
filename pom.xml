@@ -12,6 +12,9 @@
         <kotlin.src.dir>src/main/kotlin</kotlin.src.dir>
         <kotlin.test.dir>src/test/kotlin</kotlin.test.dir>
 
+        <java.src.dir>src/main/java</java.src.dir>
+        <java.test.dir>src/test/java</java.test.dir>
+
         <maven.compiler.target.version>1.8</maven.compiler.target.version>
         <maven.compiler.source.version>1.8</maven.compiler.source.version>
         <maven.compiler.testTarget.version>1.8</maven.compiler.testTarget.version>
@@ -112,6 +115,7 @@
         </pluginManagement>
 
         <plugins>
+            <!-- kotlin maven plugin -->
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
@@ -149,6 +153,7 @@
                     </execution>
                 </executions>
             </plugin>
+            <!--buildnumber-maven-plugin-->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>buildnumber-maven-plugin</artifactId>
@@ -166,6 +171,7 @@
                     <doUpdate>false</doUpdate>
                 </configuration>
             </plugin>
+            <!--maven-compiler-plugin-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -176,6 +182,7 @@
                     <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
             </plugin>
+            <!--maven-release-plugin-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-release-plugin</artifactId>

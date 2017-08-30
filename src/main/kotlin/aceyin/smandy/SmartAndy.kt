@@ -1,6 +1,6 @@
 package aceyin.smandy
 
-import aceyin.smandy.voice.VoiceDetector
+import aceyin.smandy.client.socket.AliTTSClient
 
 /**
  * Created by ace on 2017/8/29.
@@ -8,7 +8,7 @@ import aceyin.smandy.voice.VoiceDetector
 object SmartAndy {
     @JvmStatic
     fun main(args: Array<String>) {
-        val detector = Thread(VoiceDetector, "Voice Detector Thread")
-        detector.start()
+//        Thread(VoiceDetector, "Voice Detector Thread").start()
+        AliTTSClient.startTTS()
     }
 }
