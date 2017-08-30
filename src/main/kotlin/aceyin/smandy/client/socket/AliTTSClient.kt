@@ -18,22 +18,23 @@ object AliTTSClient : BaseAliVoiceClient() {
     fun startTTS() {
         val file = createVoiceFile()
 
-        val req = NlsRequest()
-        // 设置语音文件格式
-        req.app_key = API_KEY
-        //传入测试文本，返回语音结果
-        req.ttsRequest = tts_text
-        //返回语音数据格式，支持pcm,wav.alaw
-        req.setTtsEncodeType("wav")
-        //音量大小默认50，阈值0-100
-        req.setTtsVolume(30)
-        //语速，阈值-500~500
-        req.setTtsSpeechRate(0)
-        //背景音乐编号,偏移量
-        req.setTtsBackgroundMusic(1, 0)
-        // Access Key ID和Access Key Secret
-        // "LTAIsr2SrukJKTh1", "2IyzOJKDUm1phkCBou9T6ZWBiCTGpR"
-        req.authorize(APP_ACCESS_KEY, APP_ACCESS_SECRET)
+        val req = NlsRequest().apply {
+            // 设置语音文件格式
+            appKey = API_KEY
+            //传入测试文本，返回语音结果
+            ttsRequest = tts_text
+            //返回语音数据格式，支持pcm,wav.alaw
+            setTtsEncodeType("wav")
+            //音量大小默认50，阈值0-100
+            setTtsVolume(30)
+            //语速，阈值-500~500
+            setTtsSpeechRate(0)
+            //背景音乐编号,偏移量
+            setTtsBackgroundMusic(1, 0)
+            // Access Key ID和Access Key Secret
+            // "LTAIsr2SrukJKTh1", "2IyzOJKDUm1phkCBou9T6ZWBiCTGpR"
+            authorize(APP_ACCESS_KEY, APP_ACCESS_SECRET)
+        }
 
         try {
             val fileOutputStream = FileOutputStream(file)
@@ -62,7 +63,7 @@ object AliTTSClient : BaseAliVoiceClient() {
     }
 
     private fun createVoiceFile(): File {
-        val file = File("/tmp/tts.wav")
+        val file = File("/tmp/tts33333.wav")
         if (!file.exists()) {
             try {
                 file.createNewFile()
@@ -73,14 +74,15 @@ object AliTTSClient : BaseAliVoiceClient() {
         return file
     }
 
+    /**
+     * TODO 如果在这个方法里面调用 response.jsonResults.toString() 将会导致调用失败。
+     * 不知道为什么
+     */
     override fun onMessageReceived(e: NlsEvent) {
-//        val response = e.response
-//        val statusCode = response.status_code
-//        if (response.tts_ret != null) {
-//            log.info("get tts result: statusCode=[" + statusCode + "], " + response.tts_ret)
-//        } else {
-//            log.warn(response.jsonResults.toString())
-//        }
+        val response = e.response
+        val statusCode = response.status_code
+        val tts_ret = response.tts_ret
+        log.info("get tts result: statusCode=[$statusCode], $tts_ret")
         //识别结果的回调
 //        val response = e.response
 //        var result: String? = ""

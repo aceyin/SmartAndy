@@ -55,8 +55,12 @@ object VoiceDetector : Runnable {
         audioFormat = AudioFormat(16000F, 16, 1, true, false)
         targetInfo = DataLine.Info(TargetDataLine::class.java, audioFormat)
         detector = SnowboyDetect("$baseDir/lib/resources/common.res", "$baseDir/lib/resources/alexa.umdl").apply {
-            SetSensitivity("0.5")
-            SetAudioGain(1f)
+            // 检测敏感度，会越高越容易识别，但也容易失败
+            // 参考：http://docs.kitt.ai/snowboy/#what-is-detection-sensitivity
+            SetSensitivity("0.9")
+            // 设置麦克风获取的音量，越大获取的声音越高
+            // 参考: http://docs.kitt.ai/snowboy/#what-is-detection-sensitivity 查找关键字 audio gain
+            SetAudioGain(5f)
         }
         targetLine = AudioSystem.getLine(targetInfo) as TargetDataLine;
     }
@@ -91,7 +95,10 @@ object VoiceDetector : Runnable {
         val voiceFloatArr = FloatArray(data.size / tdspFormat.frameSize)
         val audioFloatConverter = TarsosDSPAudioFloatConverter.getConverter(tdspFormat)
         audioFloatConverter.toFloatArray(data.clone(), voiceFloatArr)
-        val silenceDetector = SilenceDetector(-35.0, false)
+//        val silenceDb = -35.0
+        // 检测静音的分贝数量，数字越小则越小的声音就能不被认为是静音
+        val silenceDb = -50.0
+        val silenceDetector = SilenceDetector(silenceDb, false)
         return silenceDetector.isSilence(voiceFloatArr)
     }
 
@@ -123,9 +130,6 @@ object VoiceDetector : Runnable {
         }
 
         log.info("Sound detected, starting to check wakeup words")
-        // for test
-        VoiceHandler.onOtherVoice(targetData.clone())
-        //
 
         // Converts bytes into int16 that Snowboy will read.
         ByteBuffer.wrap(targetData).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(snowboyData)
@@ -147,7 +151,7 @@ object VoiceDetector : Runnable {
     fun listenOnUserCommand() {
         printTimedLog("Listen on user command", 3000)
         // 侦听的语音长度为 每秒 16000帧*20秒
-        val frameLen = 16000 * 20
+        val frameLen = 16000 //* 20
         // Reads 0.2 second of audio in each call.
         val targetData = ByteArray(frameLen)
         // Reads the audio data in the blocking mode. If you are on a very slow
@@ -185,5 +189,44 @@ object VoiceDetector : Runnable {
             log.info(message)
             logTimeHolder.set(now)
         }
+    }
+
+    private fun originalSnowboyCode() {
+        //原始代码
+//        try {
+//            targetLine.open(audioFormat)
+//            targetLine.start()
+//            println("Record Audio Input Started ")
+//
+//            // Reads 0.1 second of audio in each call.
+//            val targetData = ByteArray(3200)
+//            val snowboyData = ShortArray(1600)
+//            var numBytesRead: Int
+//
+//            while (true) {
+//                // Reads the audio data in the blocking mode. If you are on a very slow
+//                // machine such that the hotword detector could not process the audio
+//                // data in real time, this will cause problem...
+//                numBytesRead = targetLine.read(targetData, 0, targetData.size)
+//
+//                if (numBytesRead == -1) {
+//                    print("Fails to read audio data.")
+//                    break
+//                }
+//
+//                // Converts bytes into int16 that Snowboy will read.
+//                ByteBuffer.wrap(targetData).order(
+//                        ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(snowboyData)
+//
+//                // Detection.
+//                val result = detector.RunDetection(snowboyData, snowboyData.size)
+//                if (result > 0) {
+//                    //System.out.print("Hotword " + result + " detected!\n");
+//                    print("Hello, Andy \n")
+//                }
+//            }
+//        } catch(e: Exception) {
+//            e.printStackTrace()
+//        }
     }
 }

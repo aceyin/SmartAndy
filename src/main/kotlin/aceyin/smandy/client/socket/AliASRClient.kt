@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory
 /**
  * 阿里云 语音识别(ASR,语音转文字) 客户端
  */
-class AliASRClient : BaseAliVoiceClient() {
+object AliASRClient : BaseAliVoiceClient() {
     private val log = LoggerFactory.getLogger("SmartAndy")
     // 调用语音服务的API的KEY，阿里云用来识别你是调用哪个语音服务
     // 参考： https://help.aliyun.com/document_detail/30420.html?spm=5176.doc58029.6.545.cj1lpd
