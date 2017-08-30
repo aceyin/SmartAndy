@@ -24,12 +24,23 @@ if [[ "$_java" ]]; then
     fi
 fi
 
-# base dir
+# app base dir
 APP_BASE=`pwd`
 
+# system variables
+system_properties="-Dapp.base.dir=$APP_BASE\
+-Dapp.access.key=LTAIsr2SrukJKTh1\
+-Dapp.access.secret=2IyzOJKDUm1phkCBou9T6ZWBiCTGpR\
+"
+
 # classpath and java.library.path
-JAVA_LIB_PATH="$APP_BASE/lib"
-CLASS_PATH="$CLASSPATH:.:$APP_BASE/lib:"
+java_lib_path="$APP_BASE/lib"
+
+class_path=${CLASSPATH}:${APP_BASE}
+jars=`ls -1 lib/*.jar`
+for j in ${jars}; do
+    class_path="$j:$class_path"
+done
 
 # start
-nohup "$_java -Djava.library.path=$JAVA_LIB_PATH -cp $CLASS_PATH aceyin.smandy.SmartAndy"
+nohup "$_java -Djava.library.path=$java_lib_path -cp $class_path aceyin.smandy.SmartAndy"

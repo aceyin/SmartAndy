@@ -8,7 +8,7 @@ import aceyin.smandy.voice.VoiceDetector
 object SmartAndy {
     @JvmStatic
     fun main(args: Array<String>) {
-        val detector = Thread(VoiceDetector)
+        val detector = Thread(VoiceDetector, "Voice Detector Thread")
         detector.start()
     }
 }

@@ -1,16 +1,16 @@
 package aceyin.smandy.voice
 
 import aceyin.smandy.Conf
-import aceyin.smandy.log.TimerLogger
 import ai.kitt.snowboy.SnowboyDetect
 import be.tarsos.dsp.SilenceDetector
 import be.tarsos.dsp.io.TarsosDSPAudioFloatConverter
 import be.tarsos.dsp.io.TarsosDSPAudioFormat
+import org.slf4j.LoggerFactory
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.logging.Logger
+import java.util.concurrent.atomic.AtomicLong
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.DataLine
@@ -21,7 +21,7 @@ import javax.sound.sampled.TargetDataLine
  * the main voice detector processor
  */
 object VoiceDetector : Runnable {
-    private val log = Logger.getLogger("VoiceDetector")
+    private val log = LoggerFactory.getLogger("SmartAndy")
     private val SNOWBOY_LIBRARY_NAME = "snowboy-detect-java"
     private val baseDir = Conf.str(Conf.Keys.BASE_DIR)
     private val audioFormat: AudioFormat
@@ -33,6 +33,7 @@ object VoiceDetector : Runnable {
     private val sienceCounter = AtomicInteger(0)
     // 待机状态
     private val standby = AtomicBoolean(true)
+    private val logTimeHolder = AtomicLong(0)
 
     @Volatile private var running = AtomicBoolean(false)
 
@@ -41,13 +42,13 @@ object VoiceDetector : Runnable {
             log.info("Loading snowboy native library: $SNOWBOY_LIBRARY_NAME")
             System.loadLibrary("snowboy-detect-java")
         } catch (e: Exception) {
-            log.warning("Error while loading Snowboy JNI library")
+            log.warn("Error while loading Snowboy JNI library")
             e.printStackTrace()
             System.exit(1)
         }
 
         if (baseDir.isNullOrEmpty()) {
-            log.warning("Cannot find system property '${Conf.Keys.BASE_DIR}', exit 1")
+            log.warn("Cannot find system property '${Conf.Keys.BASE_DIR}', exit 1")
             System.exit(1)
         }
 
@@ -100,7 +101,7 @@ object VoiceDetector : Runnable {
      *
      */
     fun listenOnWakeupWord() {
-        TimerLogger.log("Listen on wakeup word", 10000)
+        printTimedLog("Listen on wakeup word", 10000)
         val frameLen = 3200
         // Reads 0.2 second of audio in each call.
         val targetData = ByteArray(frameLen)
@@ -111,24 +112,21 @@ object VoiceDetector : Runnable {
         val numBytesRead = targetLine.read(targetData, 0, targetData.size)
 
         if (numBytesRead == -1) {
-            log.warning("Fails to read audio data. Check if the audio hardware is OK")
+            log.error("Fails to read audio data. Check if the audio hardware is OK")
             return
         }
 
         val isSilence = isSilence(targetData)
         if (isSilence) {
-            val num = sienceCounter.incrementAndGet()
-            if (num > SILENCE_TIMES_BEFORE_STANDBY) {
-                standby.set(true)
-                sienceCounter.set(0)
-                if (!standby.get()) {
-                    log.info("Switching to STANDBY model")
-                }
-            }
+            updateSilenceCounter()
             return
         }
 
         log.info("Sound detected, starting to check wakeup words")
+        // for test
+        VoiceHandler.onOtherVoice(targetData.clone())
+        //
+
         // Converts bytes into int16 that Snowboy will read.
         ByteBuffer.wrap(targetData).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(snowboyData)
 
@@ -147,7 +145,7 @@ object VoiceDetector : Runnable {
      * 处在检测用户命令状态的时候，侦听的语音时间会被设置为20秒钟
      */
     fun listenOnUserCommand() {
-        TimerLogger.log("Listen on user command", 3000)
+        printTimedLog("Listen on user command", 3000)
         // 侦听的语音长度为 每秒 16000帧*20秒
         val frameLen = 16000 * 20
         // Reads 0.2 second of audio in each call.
@@ -158,22 +156,34 @@ object VoiceDetector : Runnable {
         val numBytesRead = targetLine.read(targetData, 0, targetData.size)
 
         if (numBytesRead == -1) {
-            log.warning("Fails to read audio data. Check if the audio hardware is OK")
+            log.error("Fails to read audio data. Check if the audio hardware is OK")
             return
         }
 
         val isSilence = isSilence(targetData)
         if (isSilence) {
-            val num = sienceCounter.incrementAndGet()
-            if (num > SILENCE_TIMES_BEFORE_STANDBY) {
-                standby.set(true)
-                sienceCounter.set(0)
-                if (!standby.get()) {
-                    log.info("Switching to STANDBY model")
-                }
-            }
+            updateSilenceCounter()
             return
         }
         VoiceHandler.onOtherVoice(targetData)
+    }
+
+    private fun updateSilenceCounter() {
+        val num = sienceCounter.incrementAndGet()
+        if (num > SILENCE_TIMES_BEFORE_STANDBY) {
+            standby.set(true)
+            sienceCounter.set(0)
+            if (!standby.get()) {
+                log.info("Switching to STANDBY model")
+            }
+        }
+    }
+
+    private fun printTimedLog(message: String, timeGap: Long = 1000) {
+        val now = System.currentTimeMillis()
+        if (now - logTimeHolder.get() > timeGap) {
+            log.info(message)
+            logTimeHolder.set(now)
+        }
     }
 }

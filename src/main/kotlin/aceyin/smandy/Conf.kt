@@ -6,6 +6,8 @@ object Conf {
      */
     object Keys {
         const val BASE_DIR = "app.base.dir"
+        const val APP_ACCESS_KEY = "app.access.key"
+        const val APP_ACCESS_SECRET = "app.access.secret"
     }
 
     /**

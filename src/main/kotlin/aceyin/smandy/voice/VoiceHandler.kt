@@ -1,5 +1,7 @@
 package aceyin.smandy.voice
 
+import aceyin.smandy.client.AliASRClient
+
 /**
  * handle the voice
  */
@@ -15,6 +17,6 @@ object VoiceHandler {
      * 处理非热词语音
      */
     fun onOtherVoice(data: ByteArray) {
-
+        AliASRClient.startAsr(data)
     }
 }
