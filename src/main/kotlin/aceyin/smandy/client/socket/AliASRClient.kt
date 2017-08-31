@@ -19,19 +19,21 @@ object AliASRClient : BaseAliVoiceClient() {
         log.info("Start to call Alibaba ASR service")
 
         try {
-            val req = NlsRequest()
-            // appkey请从 "快速开始" 帮助页面的appkey列表中获取
-            req.appKey = API_KEY
-            // 设置语音文件格式为pcm,我们支持16k 16bit 的无头的pcm文件
-            req.setAsrFormat("pcm")
+            val req = NlsRequest().apply {
+                // appkey请从 "快速开始" 帮助页面的appkey列表中获取
+                appKey = API_KEY
+                // 设置语音文件格式为pcm,我们支持16k 16bit 的无头的pcm文件
+                setAsrFormat("pcm")
 
-            /* 热词相关配置 */
-            // req.setAsrUserId("useridSetByUser")
-            // 热词词表id
-            // req.setAsrVocabularyId("热词词表id")
-            /* 热词相关配置 */
+                /* 热词相关配置 */
+                // setAsrUserId("useridSetByUser")
+                // 热词词表id
+                // setAsrVocabularyId("热词词表id")
+                /* 热词相关配置 */
 
-            req.authorize(APP_ACCESS_KEY, APP_ACCESS_SECRET)
+                authorize(APP_ACCESS_KEY, APP_ACCESS_SECRET)
+            }
+
             val future = client.createNlsFuture(req, this)
             // 发送语音数据
             future.sendVoice(data, 0, data.size)
@@ -48,20 +50,5 @@ object AliASRClient : BaseAliVoiceClient() {
     override fun onOperationFailed(e: NlsEvent) {
         //识别失败的回调
         log.warn("调用语音识别接口失败: statusCode=[${e.response.status_code} ], message=${e.errorMessage}")
-    }
-
-    override fun onMessageReceived(e: NlsEvent) {
-        //识别结果的回调
-        val response = e.response
-        val statusCode = response.status_code
-        if (response.asr_ret != null) {
-            log.info("get asr result: statusCode=[" + statusCode + "], " + response.asr_ret)
-        } else {
-            log.info(response.jsonResults.toString())
-        }
-    }
-
-    override fun onChannelClosed(e: NlsEvent) {
-        log.info("on web socket closed.")
     }
 }

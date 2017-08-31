@@ -2,6 +2,7 @@ package aceyin.smandy.client.socket
 
 import aceyin.smandy.Conf
 import com.alibaba.idst.nls.NlsClient
+import com.alibaba.idst.nls.event.NlsEvent
 import com.alibaba.idst.nls.event.NlsListener
 import org.slf4j.LoggerFactory
 
@@ -27,5 +28,22 @@ abstract class BaseAliVoiceClient : NlsListener {
 
     fun shutdown() {
         client.close()
+    }
+
+    override fun onChannelClosed(e: NlsEvent) {
+        log.info("on web socket closed.")
+    }
+
+
+    /**
+     * FIXME 如果在这个方法里面调用 response.jsonResults.toString() 将会导致调用失败。
+     * 不知道为什么
+     */
+    override fun onMessageReceived(e: NlsEvent) {
+        //识别结果的回调
+        val response = e.response
+        val statusCode = response.status_code
+        val asr_ret = response.asr_ret
+        log.info("get asr result: statusCode=[$statusCode], $asr_ret")
     }
 }

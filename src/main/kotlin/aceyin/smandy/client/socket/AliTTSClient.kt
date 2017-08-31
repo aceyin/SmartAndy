@@ -74,40 +74,7 @@ object AliTTSClient : BaseAliVoiceClient() {
         return file
     }
 
-    /**
-     * TODO 如果在这个方法里面调用 response.jsonResults.toString() 将会导致调用失败。
-     * 不知道为什么
-     */
-    override fun onMessageReceived(e: NlsEvent) {
-        val response = e.response
-        val statusCode = response.status_code
-        val tts_ret = response.tts_ret
-        log.info("get tts result: statusCode=[$statusCode], $tts_ret")
-        //识别结果的回调
-//        val response = e.response
-//        var result: String? = ""
-//        val statusCode = response.status_code
-//        val asr_ret = response.asr_ret
-//        if (asr_ret != null) {
-//            result += "\nget asr result: statusCode=[$statusCode], $asr_ret" //识别结果
-//        }
-//        if (result != null) {
-//            println(result)
-//        } else {
-//            println(response.jsonResults.toString())
-//        }
-    }
-
-    override fun onChannelClosed(e: NlsEvent) {
-        log.info("client web socket closed")
-    }
-
     override fun onOperationFailed(e: NlsEvent) {
         log.info("调用文字转语音接口失败：response json:${e.response?.jsonResults},message=${e.errorMessage}")
-    }
-
-    @JvmStatic
-    fun main(args: Array<String>) {
-        AliTTSClient.startTTS()
     }
 }
