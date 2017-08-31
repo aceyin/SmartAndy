@@ -11,8 +11,10 @@ object SmartAndy {
     private val SNOWBOY_LIBRARY_NAME = "snowboy-detect-java"
 
     @JvmStatic fun main(args: Array<String>) {
-        log.info("Smart Andy程序启动中...")
+        Thread.currentThread().name = "程序主线程"
+        log.info("程序启动中")
         checkSystemProperties()
+        loadSystemLibrary()
         Thread(VoiceReader, "语音监测线程").start()
 //        AliTTSClient.startTTS()
     }
@@ -42,11 +44,11 @@ object SmartAndy {
      * 加载系统所需的程序库
      */
     @JvmStatic private fun loadSystemLibrary() {
-        log.info("加载 snowboy 语音库: $SNOWBOY_LIBRARY_NAME")
+        log.info("加载语音处理库")
         try {
             System.loadLibrary("snowboy-detect-java")
         } catch (e: Exception) {
-            log.warn("加载 Snowboy 语音处理库失败")
+            log.warn("加载语音处理库失败")
             e.printStackTrace()
             System.exit(1)
         }
