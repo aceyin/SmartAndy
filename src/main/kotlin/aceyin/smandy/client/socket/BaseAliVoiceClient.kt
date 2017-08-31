@@ -12,8 +12,8 @@ import org.slf4j.LoggerFactory
 abstract class BaseAliVoiceClient : NlsListener {
     private val log = LoggerFactory.getLogger("SmartAndy")
     protected val client = NlsClient()
-    protected val APP_ACCESS_KEY = Conf.str(Conf.Keys.APP_ACCESS_KEY)
-    protected val APP_ACCESS_SECRET = Conf.str(Conf.Keys.APP_ACCESS_SECRET)
+    protected val APP_ACCESS_KEY = Conf.str(Conf.Keys.APP_ACCESS_KEY.key)
+    protected val APP_ACCESS_SECRET = Conf.str(Conf.Keys.APP_ACCESS_SECRET.key)
 
     init {
         if (APP_ACCESS_KEY.isNullOrEmpty()) {

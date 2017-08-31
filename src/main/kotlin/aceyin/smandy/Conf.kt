@@ -4,10 +4,10 @@ object Conf {
     /**
      * System config keys
      */
-    object Keys {
-        const val BASE_DIR = "app.base.dir"
-        const val APP_ACCESS_KEY = "app.access.key"
-        const val APP_ACCESS_SECRET = "app.access.secret"
+    enum class Keys(val key: String) {
+        BASE_DIR("app.base.dir"),
+        APP_ACCESS_KEY("app.access.key"),
+        APP_ACCESS_SECRET("app.access.secret")
     }
 
     /**

@@ -22,15 +22,14 @@ import javax.sound.sampled.TargetDataLine
  */
 object VoiceDetector : Runnable {
     private val log = LoggerFactory.getLogger("SmartAndy")
-    private val SNOWBOY_LIBRARY_NAME = "snowboy-detect-java"
-    private val baseDir = Conf.str(Conf.Keys.BASE_DIR)
+    private val baseDir = Conf.str(Conf.Keys.BASE_DIR.key)
     private val audioFormat: AudioFormat
     private val targetInfo: DataLine.Info
     private val detector: SnowboyDetect
     private val targetLine: TargetDataLine
     // 连续100次静音检测之后，进入到待机状态
     private val SILENCE_TIMES_BEFORE_STANDBY = 100
-    private val sienceCounter = AtomicInteger(0)
+    private val silenceCounter = AtomicInteger(0)
     // 待机状态
     private val standby = AtomicBoolean(true)
     private val logTimeHolder = AtomicLong(0)
@@ -38,20 +37,7 @@ object VoiceDetector : Runnable {
     @Volatile private var running = AtomicBoolean(false)
 
     init {
-        try {
-            log.info("Loading snowboy native library: $SNOWBOY_LIBRARY_NAME")
-            System.loadLibrary("snowboy-detect-java")
-        } catch (e: Exception) {
-            log.warn("Error while loading Snowboy JNI library")
-            e.printStackTrace()
-            System.exit(1)
-        }
-
-        if (baseDir.isNullOrEmpty()) {
-            log.warn("Cannot find system property '${Conf.Keys.BASE_DIR}', exit 1")
-            System.exit(1)
-        }
-
+        log.info("启动语音监测程序...")
         audioFormat = AudioFormat(16000F, 16, 1, true, false)
         targetInfo = DataLine.Info(TargetDataLine::class.java, audioFormat)
         detector = SnowboyDetect("$baseDir/lib/resources/common.res", "$baseDir/lib/resources/alexa.umdl").apply {
@@ -62,13 +48,13 @@ object VoiceDetector : Runnable {
             // 参考: http://docs.kitt.ai/snowboy/#what-is-detection-sensitivity 查找关键字 audio gain
             SetAudioGain(5f)
         }
-        targetLine = AudioSystem.getLine(targetInfo) as TargetDataLine;
+        targetLine = AudioSystem.getLine(targetInfo) as TargetDataLine
     }
 
     override fun run() {
         if (running.get()) return
         try {
-            log.info("Starting Record Audio Input ... ")
+            log.info("等待语音输入 ... ")
             targetLine.open(audioFormat)
             targetLine.start()
             running.set(true)
@@ -77,6 +63,7 @@ object VoiceDetector : Runnable {
                 if (standby.get()) {
                     listenOnWakeupWord()
                 } else {
+                    log.info("等待用户指令...")
                     listenOnUserCommand()
                 }
             }
@@ -90,14 +77,14 @@ object VoiceDetector : Runnable {
      * @param data ByteArray - the data captured by microphone
      * @return true, if is silence
      */
+    private val tdspFormat = TarsosDSPAudioFormat(16000f, 16, 1, true, false)
+    private val audioFloatConverter = TarsosDSPAudioFloatConverter.getConverter(tdspFormat)
+    // 检测静音的分贝数量，数字越小则敏感度越高
+    private val silenceDb = -50.0
+
     fun isSilence(data: ByteArray): Boolean {
-        val tdspFormat = TarsosDSPAudioFormat(16000f, 16, 1, true, false)
         val voiceFloatArr = FloatArray(data.size / tdspFormat.frameSize)
-        val audioFloatConverter = TarsosDSPAudioFloatConverter.getConverter(tdspFormat)
         audioFloatConverter.toFloatArray(data.clone(), voiceFloatArr)
-//        val silenceDb = -35.0
-        // 检测静音的分贝数量，数字越小则越小的声音就能不被认为是静音
-        val silenceDb = -50.0
         val silenceDetector = SilenceDetector(silenceDb, false)
         return silenceDetector.isSilence(voiceFloatArr)
     }
@@ -108,7 +95,6 @@ object VoiceDetector : Runnable {
      *
      */
     fun listenOnWakeupWord() {
-        printTimedLog("Listen on wakeup word", 10000)
         val frameLen = 3200
         // Reads 0.2 second of audio in each call.
         val targetData = ByteArray(frameLen)
@@ -119,7 +105,7 @@ object VoiceDetector : Runnable {
         val numBytesRead = targetLine.read(targetData, 0, targetData.size)
 
         if (numBytesRead == -1) {
-            log.error("Fails to read audio data. Check if the audio hardware is OK")
+            log.error("从麦克风读取语音数据失败，请检查硬件设备是否正常。")
             return
         }
 
@@ -129,7 +115,7 @@ object VoiceDetector : Runnable {
             return
         }
 
-        log.info("Sound detected, starting to check wakeup words")
+        log.info("检测到声音，开始识别是否是唤醒词...")
 
         // Converts bytes into int16 that Snowboy will read.
         ByteBuffer.wrap(targetData).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(snowboyData)
@@ -137,9 +123,9 @@ object VoiceDetector : Runnable {
         // Detection.
         val result = detector.RunDetection(snowboyData, snowboyData.size)
         if (result > 0) {
-            log.info("Wakeup words detected")
+            log.info("检测到唤醒词，开始唤醒服务")
             standby.set(false)
-            sienceCounter.set(0)
+            silenceCounter.set(0)
         }
     }
 
@@ -149,7 +135,6 @@ object VoiceDetector : Runnable {
      * 处在检测用户命令状态的时候，侦听的语音时间会被设置为20秒钟
      */
     fun listenOnUserCommand() {
-        printTimedLog("Listen on user command", 3000)
         // 侦听的语音长度为 每秒 16000帧*20秒
         val frameLen = 16000 //* 20
         // Reads 0.2 second of audio in each call.
@@ -160,7 +145,7 @@ object VoiceDetector : Runnable {
         val numBytesRead = targetLine.read(targetData, 0, targetData.size)
 
         if (numBytesRead == -1) {
-            log.error("Fails to read audio data. Check if the audio hardware is OK")
+            log.error("从麦克风读取语音数据失败，请检查硬件设备是否正常。")
             return
         }
 
@@ -173,12 +158,12 @@ object VoiceDetector : Runnable {
     }
 
     private fun updateSilenceCounter() {
-        val num = sienceCounter.incrementAndGet()
+        val num = silenceCounter.incrementAndGet()
         if (num > SILENCE_TIMES_BEFORE_STANDBY) {
             standby.set(true)
-            sienceCounter.set(0)
+            silenceCounter.set(0)
             if (!standby.get()) {
-                log.info("Switching to STANDBY model")
+                log.info("切换到待机模式...")
             }
         }
     }
@@ -191,8 +176,8 @@ object VoiceDetector : Runnable {
         }
     }
 
-    private fun originalSnowboyCode() {
-        //原始代码
+//    private fun originalSnowboyCode() {
+    //原始代码
 //        try {
 //            targetLine.open(audioFormat)
 //            targetLine.start()
@@ -228,5 +213,5 @@ object VoiceDetector : Runnable {
 //        } catch(e: Exception) {
 //            e.printStackTrace()
 //        }
-    }
+//    }
 }
