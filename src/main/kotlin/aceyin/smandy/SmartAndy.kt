@@ -1,6 +1,6 @@
 package aceyin.smandy
 
-import aceyin.smandy.voice.VoiceDetector
+import aceyin.smandy.voice.VoiceReader
 import org.slf4j.LoggerFactory
 
 /**
@@ -13,7 +13,7 @@ object SmartAndy {
     @JvmStatic fun main(args: Array<String>) {
         log.info("Smart Andy程序启动中...")
         checkSystemProperties()
-        Thread(VoiceDetector, "语音监测线程").start()
+        Thread(VoiceReader, "语音监测线程").start()
 //        AliTTSClient.startTTS()
     }
 

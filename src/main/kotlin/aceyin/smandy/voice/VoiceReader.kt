@@ -20,7 +20,7 @@ import javax.sound.sampled.TargetDataLine
 /**
  * the main voice detector processor
  */
-object VoiceDetector : Runnable {
+object VoiceReader : Runnable {
     private val log = LoggerFactory.getLogger("SmartAndy")
     private val baseDir = Conf.str(Conf.Keys.BASE_DIR.key)
     private val audioFormat: AudioFormat
@@ -32,7 +32,11 @@ object VoiceDetector : Runnable {
     private val silenceCounter = AtomicInteger(0)
     // 待机状态
     private val standby = AtomicBoolean(true)
+    // 是否在读取用户指令
+    private val readingUserCommand = AtomicBoolean(false)
     private val logTimeHolder = AtomicLong(0)
+    // 侦听的语音长度为 0.2秒 (3200帧)
+    private val frameLen = 3200
 
     @Volatile private var running = AtomicBoolean(false)
 
@@ -58,30 +62,40 @@ object VoiceDetector : Runnable {
             targetLine.open(audioFormat)
             targetLine.start()
             running.set(true)
-
-            while (true) {
-                if (standby.get()) {
-                    listenOnWakeupWord()
-                } else {
-                    log.info("等待用户指令...")
-                    listenOnUserCommand()
-                }
-            }
         } catch(e: Exception) {
             e.printStackTrace()
         }
+        while (true) {
+            val voiceData = ByteArray(frameLen)
+            // Reads the audio data in the blocking mode. If you are on a very slow
+            // machine such that the hotword detector could not process the audio
+            // data in real time, this will cause problem...
+            val numBytesRead = targetLine.read(voiceData, 0, voiceData.size)
+
+            if (numBytesRead == -1) {
+                log.error("从麦克风读取语音数据失败，请检查硬件设备是否正常。")
+                continue
+            }
+            // 根据当前是否为待机模式来决定应该是去识别 热词 还是 去识别 用户指令
+            if (standby.get()) {
+                checkHotWord(voiceData)
+            } else {
+                log.info("等待用户指令...")
+                listenOnUserCommand(voiceData)
+            }
+        }
     }
+
+    private val tdspFormat = TarsosDSPAudioFormat(16000f, 16, 1, true, false)
+    private val audioFloatConverter = TarsosDSPAudioFloatConverter.getConverter(tdspFormat)
+    // 检测静音的分贝数量，数字越小则敏感度越高
+    private val silenceDb = -50.0
 
     /**
      * Check if microphone is silence.
      * @param data ByteArray - the data captured by microphone
      * @return true, if is silence
      */
-    private val tdspFormat = TarsosDSPAudioFormat(16000f, 16, 1, true, false)
-    private val audioFloatConverter = TarsosDSPAudioFloatConverter.getConverter(tdspFormat)
-    // 检测静音的分贝数量，数字越小则敏感度越高
-    private val silenceDb = -50.0
-
     fun isSilence(data: ByteArray): Boolean {
         val voiceFloatArr = FloatArray(data.size / tdspFormat.frameSize)
         audioFloatConverter.toFloatArray(data.clone(), voiceFloatArr)
@@ -94,22 +108,9 @@ object VoiceDetector : Runnable {
      * 当系统刚刚启动，或者已经进入到候机状态之后，将语音检测切换到监听唤醒词状态。
      *
      */
-    fun listenOnWakeupWord() {
-        val frameLen = 3200
-        // Reads 0.2 second of audio in each call.
-        val targetData = ByteArray(frameLen)
+    fun checkHotWord(data: ByteArray) {
         val snowboyData = ShortArray(frameLen / 2)
-        // Reads the audio data in the blocking mode. If you are on a very slow
-        // machine such that the hotword detector could not process the audio
-        // data in real time, this will cause problem...
-        val numBytesRead = targetLine.read(targetData, 0, targetData.size)
-
-        if (numBytesRead == -1) {
-            log.error("从麦克风读取语音数据失败，请检查硬件设备是否正常。")
-            return
-        }
-
-        val isSilence = isSilence(targetData)
+        val isSilence = isSilence(data)
         if (isSilence) {
             updateSilenceCounter()
             return
@@ -118,7 +119,7 @@ object VoiceDetector : Runnable {
         log.info("检测到声音，开始识别是否是唤醒词...")
 
         // Converts bytes into int16 that Snowboy will read.
-        ByteBuffer.wrap(targetData).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(snowboyData)
+        ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(snowboyData)
 
         // Detection.
         val result = detector.RunDetection(snowboyData, snowboyData.size)
@@ -126,35 +127,24 @@ object VoiceDetector : Runnable {
             log.info("检测到唤醒词，开始唤醒服务")
             standby.set(false)
             silenceCounter.set(0)
+            // 系统被热词唤醒之后，将语音监听切换到 读取用户指令 模式
+            readingUserCommand.set(true)
         }
     }
 
     /**
      * 监听用户指令。
      * 当程序被唤醒词激活之后，将语音检测切换到监听用户指令状态.
-     * 处在检测用户命令状态的时候，侦听的语音时间会被设置为20秒钟
+     * 检测用户指令时，如果microphone 在2秒之内没有输入(silence) 则认为当前指令输入完毕，
+     * 然后将在这期间内所有获取的语音数据合并，一起提交给 handler 处理
      */
-    fun listenOnUserCommand() {
-        // 侦听的语音长度为 每秒 16000帧*20秒
-        val frameLen = 16000 //* 20
-        // Reads 0.2 second of audio in each call.
-        val targetData = ByteArray(frameLen)
-        // Reads the audio data in the blocking mode. If you are on a very slow
-        // machine such that the hotword detector could not process the audio
-        // data in real time, this will cause problem...
-        val numBytesRead = targetLine.read(targetData, 0, targetData.size)
-
-        if (numBytesRead == -1) {
-            log.error("从麦克风读取语音数据失败，请检查硬件设备是否正常。")
-            return
-        }
-
-        val isSilence = isSilence(targetData)
+    fun listenOnUserCommand(data: ByteArray) {
+        val isSilence = isSilence(data)
         if (isSilence) {
             updateSilenceCounter()
             return
         }
-        VoiceHandler.onOtherVoice(targetData)
+        VoiceHandler.onUserCommand(data)
     }
 
     private fun updateSilenceCounter() {
@@ -165,14 +155,6 @@ object VoiceDetector : Runnable {
             if (!standby.get()) {
                 log.info("切换到待机模式...")
             }
-        }
-    }
-
-    private fun printTimedLog(message: String, timeGap: Long = 1000) {
-        val now = System.currentTimeMillis()
-        if (now - logTimeHolder.get() > timeGap) {
-            log.info(message)
-            logTimeHolder.set(now)
         }
     }
 

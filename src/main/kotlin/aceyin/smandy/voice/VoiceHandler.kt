@@ -17,7 +17,7 @@ object VoiceHandler {
     /**
      * 处理非热词语音
      */
-    fun onOtherVoice(data: ByteArray) {
+    fun onUserCommand(data: ByteArray) {
         asrClient.startAsr(data)
     }
 }
