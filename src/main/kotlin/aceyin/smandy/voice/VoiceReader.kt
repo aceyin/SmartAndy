@@ -39,8 +39,9 @@ object VoiceReader : Runnable {
             if (SilenceChecker.isSilence(voiceData)) {
                 val count = silenceCounter.increase()
                 if (count >= SILENCE_COUNT_BEFORE_SLEEP && stateHolder.state == State.listening) {
+                    log.info("长时间没有声音，进入待机状态...")
                     stateHolder.switchTo(State.sleep)
-                    // TODO 播放提示音，让用户知道系统进入休眠
+                    Speaker.notifySleep()
                 }
                 continue
             }
@@ -54,7 +55,7 @@ object VoiceReader : Runnable {
                         // 系统被热词唤醒之后，将语音监听切换到 读取用户指令 模式
                         stateHolder.switchTo(State.listening)
                         silenceCounter.reset()
-                        // TODO 播放提示音，让用户可以开始输入指令
+                        Speaker.notifyWakeup()
                     }
                 }
                 State.listening -> {
