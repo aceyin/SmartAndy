@@ -35,6 +35,7 @@ object Microphone {
 
         if (numBytesRead == -1) {
             log.error("从麦克风读取语音数据失败，请检查硬件设备是否正常。")
+            return ByteArray(0)
         }
         return voiceData
     }

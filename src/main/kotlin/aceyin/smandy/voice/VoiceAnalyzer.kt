@@ -7,9 +7,9 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * 热词检查器
+ * 语音分析程序
  */
-object HotWordChecker {
+internal object VoiceAnalyzer {
     private val log = LoggerFactory.getLogger("SmartAndy")
     private val baseDir = Conf.str(Conf.Keys.BASE_DIR.key)
     private val detector: SnowboyDetect
@@ -25,7 +25,10 @@ object HotWordChecker {
         }
     }
 
-    fun isHotWord(data: ByteArray, frameLen: Int): Boolean {
+    /**
+     * 分析是否当前语音是唤醒词
+     */
+    fun isWakeupWord(data: ByteArray, frameLen: Int): Boolean {
         // Converts bytes into int16 that Snowboy will read.
         val snowboyData = ShortArray(frameLen / 2)
         ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(snowboyData)

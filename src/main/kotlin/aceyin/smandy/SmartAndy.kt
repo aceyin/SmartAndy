@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory
  */
 object SmartAndy {
     private val log = LoggerFactory.getLogger("Smart Andy")
-    private val SNOWBOY_LIBRARY_NAME = "snowboy-detect-java"
 
     @JvmStatic fun main(args: Array<String>) {
         Thread.currentThread().name = "程序主线程"
