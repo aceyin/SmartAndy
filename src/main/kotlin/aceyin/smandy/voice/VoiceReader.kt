@@ -11,8 +11,8 @@ import java.util.concurrent.atomic.AtomicInteger
 object VoiceReader : Runnable {
     private val log = LoggerFactory.getLogger("SmartAndy")
     // 连续100次静音检测之后，进入到待机状态
-    private val SILENCE_TIMES_BEFORE_STANDBY = 100
-    // 采样频率为每秒 16000 帧，因此采样 3200 帧数据，需要 0.2 秒
+    private val SILENCE_COUNT_BEFORE_SLEEP = 100
+    // 采样频率为 16000 Hz
     private val frameLen = 3200
     // 用户指令时间间隔(单位：毫秒)。
     // 即: 连续静音时间超过这个值之后即被认为用户当前的语音输入已经完成
@@ -38,7 +38,7 @@ object VoiceReader : Runnable {
             // 如果是静音，继续下一轮语音读取
             if (SilenceChecker.isSilence(voiceData)) {
                 val count = silenceCounter.increase()
-                if (count >= SILENCE_TIMES_BEFORE_STANDBY) {
+                if (count >= SILENCE_COUNT_BEFORE_SLEEP && stateHolder.state == State.listening) {
                     stateHolder.switchTo(State.sleep)
                     // TODO 播放提示音，让用户知道系统进入休眠
                 }
@@ -80,7 +80,11 @@ object VoiceReader : Runnable {
         if (silenceCounter.silenceTime() > STOP_TALKING_THRESHOLD) {
             val command = voiceCache.takeAll()
             // 调用阿里云的语音转文字接口，解析语音
+            stateHolder.switchTo(State.understanding)
+            // 阻塞模式调用阿里云的语音接口
             AliASRClient.startAsr(command)
+            // 调用完之后，切换到监听状态
+            stateHolder.switchTo(State.listening)
         }
         // 还在静音阈值之内，继续将语音数据存入队列
         else {
@@ -101,16 +105,6 @@ object VoiceReader : Runnable {
         /* 切换状态 */
         fun switchTo(state: State) {
             this.state = state
-            when (state) {
-                State.sleep -> {
-                    log.info("切换到待机模式...")
-                }
-                State.listening -> {
-                    log.info("切换到工作模式...")
-                }
-                else -> {
-                }
-            }
         }
     }
 
@@ -129,14 +123,17 @@ object VoiceReader : Runnable {
             continuousSilenceCount.set(0)
         }
 
-        /* 获取连续静音的时间. 采样频率为每秒 16000 帧，因此采样 3200 帧数据，需要 0.2 秒 */
+        /* 获取连续静音的时间 */
         fun silenceTime(): Long {
+            // TODO 更改计算连续静音时间的方式
+            // 平均来说，每次读取 3200 采样(16000Hz的1/5) 差不多要用130多毫秒
+            // 因此这里计算连续静音的时间就简单的将 连续静音次数*200
             return continuousSilenceCount.get() * 200L
         }
     }
 
     /* 语音数据缓存 */
-    private class VoiceCache() {
+    private class VoiceCache {
         private val CACHE = mutableListOf<ByteArray>()
         private var CACHE_SIZE = 0
 
