@@ -14,7 +14,14 @@ object SpeakerTest {
     }
 
     @JvmStatic fun main(args: Array<String>) {
-        Speaker.notifySleep()
-        Speaker.notifyWakeup()
+        Speaker.playSleepSound()
+        Thread.sleep(2000)
+        Speaker.playWakeupSound()
+        Thread.sleep(2000)
+
+        Speaker.playSleepSound()
+        Thread.sleep(2000)
+        Speaker.playWakeupSound()
+        Thread.sleep(2000)
     }
 }

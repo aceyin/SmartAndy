@@ -12,7 +12,7 @@ internal object SilenceChecker {
     private val tdspFormat = TarsosDSPAudioFormat(16000f, 16, 1, true, false)
     private val audioFloatConverter = TarsosDSPAudioFloatConverter.getConverter(tdspFormat)
     // 检测静音的分贝数量，数字越小则敏感度越高
-    private val silenceDb = -50.0
+    private val silenceDb = -70.0
 
     /**
      * Check if microphone is silence.

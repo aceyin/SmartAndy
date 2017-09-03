@@ -18,10 +18,10 @@ internal object VoiceAnalyzer {
         detector = SnowboyDetect("$baseDir/lib/resources/common.res", "$baseDir/lib/resources/alexa.umdl").apply {
             // 检测敏感度，会越高越容易识别，但也容易失败
             // 参考：http://docs.kitt.ai/snowboy/#what-is-detection-sensitivity
-            SetSensitivity("0.9")
+            SetSensitivity("0.5")
             // 设置麦克风获取的音量，越大获取的声音越高
             // 参考: http://docs.kitt.ai/snowboy/#what-is-detection-sensitivity 查找关键字 audio gain
-            SetAudioGain(5f)
+            SetAudioGain(1f)
         }
     }
 

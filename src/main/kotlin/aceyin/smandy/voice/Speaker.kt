@@ -4,6 +4,7 @@ import aceyin.smandy.Conf
 import sun.audio.AudioPlayer
 import sun.audio.AudioStream
 import java.io.File
+import java.io.InputStream
 
 
 /**
@@ -11,25 +12,25 @@ import java.io.File
  */
 object Speaker {
     /* 从待机进入工作状态的唤醒提示音 */
-    private val WAKEUP_VOICE = AudioStream(File("${Conf.str(Conf.Keys.BASE_DIR.key)}/lib/resources/ding.wav").inputStream())
+    private val WAKEUP_VOICE = File("${Conf.str(Conf.Keys.BASE_DIR.key)}/lib/resources/ding.wav")
     /* 从工作进入待机状态的唤醒提示音 */
-    private val SLEEP_VOICE = AudioStream(File("${Conf.str(Conf.Keys.BASE_DIR.key)}/lib/resources/dong.wav").inputStream())
+    private val SLEEP_VOICE = File("${Conf.str(Conf.Keys.BASE_DIR.key)}/lib/resources/dong.wav")
 
-    private fun play(stream: AudioStream) {
-        AudioPlayer.player.start(stream)
+    private fun play(stream: InputStream) {
+        AudioPlayer.player.start(AudioStream(stream))
     }
 
     /**
      * 播放唤醒提示音
      */
-    fun notifyWakeup() {
-        play(WAKEUP_VOICE)
+    fun playWakeupSound() {
+        play(WAKEUP_VOICE.inputStream())
     }
 
     /**
      * 播放休眠提示音
      */
-    fun notifySleep() {
-        play(SLEEP_VOICE)
+    fun playSleepSound() {
+        play(SLEEP_VOICE.inputStream())
     }
 }
